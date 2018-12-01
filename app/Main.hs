@@ -1,8 +1,13 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Control.Exception.Safe
 import Control.Monad.IO.Class
 import qualified Data.ByteString as B
+
+import Options.Generic
 
 import Language.RainML.Parser
 import Language.RainML.CodeGen
@@ -15,11 +20,19 @@ data ParseException = ParseException FilePath
 
 instance Exception ParseException
 
+data Command
+  = Build FilePath FilePath
+  | Help
+  deriving (Generic, Show)
+
+instance ParseRecord Command
+
 run :: (MonadIO m, MonadThrow m) => m ()
 run = do
-  let fp = "input.rml"
-  let outfp = "output.rvm"
-  compile fp outfp
+  (x, help) <- getWithHelp "Rain ML."
+  case x of
+    Help -> help
+    Build fp outfp -> compile fp outfp
 
 compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
