@@ -10,8 +10,8 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-parseString :: String -> Either String Int
-parseString xs = bimap parseErrorPretty id $ parse whileParser "<filename>" xs
+parseString :: FilePath -> String -> Either String Int
+parseString fp xs = bimap parseErrorPretty id $ parse whileParser fp xs
 
 type Parser = Parsec Void String
 
