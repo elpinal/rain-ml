@@ -4,7 +4,7 @@
 
 ## Features
 
-- Run on a virtual machine: ([<em>Rain ML</em>](https://github.com/elpinal/rain-vm))
+- Run on a virtual machine: ([<em>Rain VM</em>](https://github.com/elpinal/rain-vm))
 - Call-by-value
 - Usual ML polymorphism
 
