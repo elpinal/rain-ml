@@ -16,8 +16,10 @@ import Language.RainML.Version
 main :: IO ()
 main = run
 
-data ParseException = ParseException FilePath String
-  deriving Show
+data ParseException = ParseException String
+
+instance Show ParseException where
+  show (ParseException s) = s
 
 instance Exception ParseException
 
@@ -40,7 +42,7 @@ run = do
 compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
   content <- liftIO $ readFile fp
-  n <- either (throwM . ParseException fp) return $ parseString fp content
+  n <- either (throwM . ParseException) return $ parseString fp content
   liftIO $ B.writeFile outfp $ codeGen n
 
 programName :: String
