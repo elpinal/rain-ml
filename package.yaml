@@ -22,6 +22,7 @@ description:         Please see the README on GitHub at <https://github.com/elpi
 dependencies:
 - base >= 4.7 && < 5
 - bytestring >= 0.10.8.2
+- megaparsec >= 6.5.0
 - safe-exceptions >= 0.1.7.0
 - optparse-generic >= 1.3.0
 

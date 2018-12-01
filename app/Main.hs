@@ -40,7 +40,7 @@ run = do
 compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
   content <- liftIO $ readFile fp
-  n <- maybe (throwM $ ParseException fp) return $ parse content
+  n <- maybe (throwM $ ParseException fp) return $ parseString content
   liftIO $ B.writeFile outfp $ codeGen n
 
 programName :: String
