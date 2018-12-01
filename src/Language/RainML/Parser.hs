@@ -2,6 +2,7 @@ module Language.RainML.Parser
   ( parseString
   ) where
 
+import Data.Bifunctor
 import Data.Char
 import Data.Void
 
@@ -9,9 +10,8 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-parseString :: String -> Maybe Int
-parseString []      = Nothing
-parseString (x : _) = return $ digitToInt x
+parseString :: String -> Either String Int
+parseString xs = bimap parseErrorPretty id $ parse whileParser "<filename>" xs
 
 type Parser = Parsec Void String
 
