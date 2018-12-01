@@ -21,6 +21,8 @@ description:         Please see the README on GitHub at <https://github.com/elpi
 
 dependencies:
 - base >= 4.7 && < 5
+- bytestring >= 0.10.8.2
+- safe-exceptions >= 0.1.7.0
 
 library:
   source-dirs: src
