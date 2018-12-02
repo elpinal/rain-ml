@@ -5,7 +5,7 @@ module Main where
 
 import Control.Exception.Safe
 import Control.Monad.IO.Class
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as B
 
 import Options.Generic
 

@@ -2,9 +2,10 @@ module Language.RainML.CodeGen
   ( codeGen
   ) where
 
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as B
+import Data.ByteString.Builder
 
 import Language.RainML.Version
 
 codeGen :: Int -> B.ByteString
-codeGen n = B.pack [rainvmVersion, fromIntegral n]
+codeGen n = toLazyByteString $ word8 rainvmVersion <> word32BE (fromIntegral n)
