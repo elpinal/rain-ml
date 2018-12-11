@@ -1,13 +1,10 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main where
 
 import Control.Exception.Safe
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy as B
 
-import Options.Generic
+import Options.Applicative
 
 import Language.RainML.CodeGen
 import Language.RainML.Parser
@@ -26,16 +23,24 @@ instance Exception ParseException
 data Command
   = Build FilePath FilePath
   | Version
-  | Help
-  deriving (Generic, Show)
+  deriving Show
 
-instance ParseRecord Command
+commandParser :: Parser Command
+commandParser = subparser $ mconcat
+  [ command "build" $ info buildCommand $ progDesc "Build a program"
+  , command "version" $ info versionCommand $ progDesc "Print Rain ML version"
+  ]
+
+buildCommand :: Parser Command
+buildCommand = Build <$> argument str (metavar "INPUT") <*> argument str (metavar "OUTPUT")
+
+versionCommand :: Parser Command
+versionCommand = pure Version
 
 run :: (MonadIO m, MonadThrow m) => m ()
 run = do
-  (x, help) <- getWithHelp "Rain ML."
+  x <- liftIO $ customExecParser (prefs showHelpOnEmpty) $ info (commandParser <**> helper) $ fullDesc <> progDesc "A Rain ML compiler." <> header "Rain ML."
   case x of
-    Help -> help
     Version -> showVersion
     Build fp outfp -> compile fp outfp
 
