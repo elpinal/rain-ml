@@ -14,12 +14,20 @@ import Language.RainML.Version
 newtype Reg = Reg Word8
   deriving (Eq, Show)
 
+moveImm :: Word8
+moveImm = 0b100
+
 codeGen :: Int -> B.ByteString
 codeGen n = toLazyByteString $ mconcat
   [ word8 rainvmVersion
-  , word8 0b100
-  , reg $ Reg 0
-  , word32BE $ fromIntegral n
+  , moveImmediate (Reg 0) n
+  ]
+
+moveImmediate :: Reg -> Int -> Builder
+moveImmediate dest imm = mconcat
+  [ word8 moveImm
+  , reg dest
+  , word32BE $ fromIntegral imm
   ]
 
 reg :: Reg -> Builder
