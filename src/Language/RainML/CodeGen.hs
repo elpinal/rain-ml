@@ -10,7 +10,7 @@ import Data.ByteString.Builder
 import Data.Coerce
 import Data.Word
 
-import qualified Language.RainML.Syntax as S
+import qualified Language.RainML.Intermediate as I
 import Language.RainML.Version
 
 newtype Reg = Reg Word8
@@ -33,17 +33,24 @@ instWithoutInfo i = inst i 0
 immBits :: Word8
 immBits = 0b100
 
-codeGen :: S.Term -> B.ByteString
+codeGen :: I.Term -> B.ByteString
 codeGen tm = toLazyByteString $ mconcat
   [ word8 rainvmVersion
   , term tm
   , halt
   ]
 
-term :: S.Term -> Builder
-term (S.Int n) = moveImmediate (Reg 0) n
-term (S.Add (S.Int m) (S.Int n)) = moveImmediate (Reg 0) m <> addImmediate (Reg 0) (Reg 0) n
-term (S.Add _ _) = error "not yet supported"
+value :: I.Value -> Builder
+value (I.Int n) = moveImmediate (Reg 0) n
+value (I.Var _) = mempty -- Subject to change.
+
+decl :: I.Decl -> Builder
+decl (I.Id (I.Int n))                    = moveImmediate (Reg 0) n
+decl (I.Arith I.Add (I.Var _) (I.Int n)) = addImmediate (Reg 0) (Reg 0) n -- Subject to change.
+
+term :: I.Term -> Builder
+term (I.Value v) = value v
+term (I.Let d t) = decl d <> term t
 
 moveImmediate :: Reg -> Int -> Builder
 moveImmediate dest imm = mconcat

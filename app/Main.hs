@@ -7,6 +7,7 @@ import qualified Data.ByteString.Lazy as B
 import Options.Applicative
 
 import Language.RainML.CodeGen
+import qualified Language.RainML.Intermediate as I
 import Language.RainML.Parser
 import Language.RainML.Version
 
@@ -48,7 +49,7 @@ compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
   content <- liftIO $ readFile fp
   tm <- either (throwM . ParseException) return $ parseString fp content
-  liftIO $ B.writeFile outfp $ codeGen tm
+  liftIO $ B.writeFile outfp $ codeGen $ I.translate tm
 
 programName :: String
 programName = "rain-ml"
