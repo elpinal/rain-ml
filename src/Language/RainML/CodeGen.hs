@@ -16,14 +16,22 @@ import Language.RainML.Version
 newtype Reg = Reg Word8
   deriving (Eq, Show)
 
-newtype Opcode = Opcode Word8
-  deriving (Eq, Show)
+data Instruction
+  = Move
+  | Halt
+  | Add
+  deriving (Eq, Show, Enum)
 
-moveImm :: Word8
-moveImm = 0b100
+-- The second argument is given to provide additional information.
+inst :: Instruction -> Word8 -> Builder
+inst i extra = word8 $ shiftL (toEnum $ fromEnum i) 3 .|. extra
 
-opcodeHalt :: Opcode
-opcodeHalt = Opcode 1
+instWithoutInfo :: Instruction -> Builder
+instWithoutInfo i = inst i 0
+
+-- Bits to specify immediate versions of instructions.
+immBits :: Word8
+immBits = 0b100
 
 codeGen :: S.Term -> B.ByteString
 codeGen tm = toLazyByteString $ mconcat
@@ -39,14 +47,14 @@ term (S.Add _ _) = error "not yet supported"
 
 moveImmediate :: Reg -> Int -> Builder
 moveImmediate dest imm = mconcat
-  [ word8 moveImm
+  [ inst Move immBits
   , reg dest
   , word32BE $ fromIntegral imm
   ]
 
 addImmediate :: Reg -> Reg -> Int -> Builder
 addImmediate dest src imm = mconcat
-  [ word8 $ 0b10100 .|. shiftR (coerce src) 3
+  [ inst Add $ immBits .|. shiftR (coerce src) 3
   , word8 $ coerce dest .|. shiftL (coerce src) 5
   , word32BE $ fromIntegral imm
   ]
@@ -55,7 +63,4 @@ reg :: Reg -> Builder
 reg = word8 . coerce
 
 halt :: Builder
-halt = opcode opcodeHalt
-
-opcode :: Opcode -> Builder
-opcode = word8 . (`shiftL` 3) . coerce
+halt = instWithoutInfo Halt
