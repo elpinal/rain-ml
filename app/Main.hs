@@ -9,15 +9,19 @@ import Options.Applicative
 import Language.RainML.CodeGen
 import qualified Language.RainML.Intermediate as I
 import Language.RainML.Parser
+import Language.RainML.Syntax
 import Language.RainML.Version
 
 main :: IO ()
 main = run
 
-data ParseException = ParseException String
+data ParseException
+  = ParseException String
+  | ExternalTypeError TypeError
 
 instance Show ParseException where
   show (ParseException s) = s
+  show (ExternalTypeError e) = show e
 
 instance Exception ParseException
 
@@ -49,6 +53,7 @@ compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
   content <- liftIO $ readFile fp
   tm <- either (throwM . ParseException) return $ parseString fp content
+  either (throwM . ExternalTypeError) return $ typeOf tm >>= expect IntType
   liftIO $ B.writeFile outfp $ codeGen $ I.translate tm
 
 programName :: String
