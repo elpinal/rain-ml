@@ -18,10 +18,12 @@ main = run
 data ParseException
   = ParseException String
   | ExternalTypeError TypeError
+  | IntermediateTypeError I.TypeError -- This kind of errors indicates bugs of this compiler.
 
 instance Show ParseException where
   show (ParseException s) = s
   show (ExternalTypeError e) = show e
+  show (IntermediateTypeError e) = show e
 
 instance Exception ParseException
 
@@ -54,7 +56,9 @@ compile fp outfp = do
   content <- liftIO $ readFile fp
   tm <- either (throwM . ParseException) return $ parseString fp content
   either (throwM . ExternalTypeError) return $ typeOf tm >>= expect IntType
-  liftIO $ B.writeFile outfp $ codeGen $ I.translate tm
+  let inter = I.translate tm
+  either (throwM . IntermediateTypeError) return $ I.typecheck inter
+  liftIO $ B.writeFile outfp $ codeGen inter
 
 programName :: String
 programName = "rain-ml"
