@@ -47,8 +47,8 @@ run = do
 compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
   content <- liftIO $ readFile fp
-  n <- either (throwM . ParseException) return $ parseString fp content
-  liftIO $ B.writeFile outfp $ codeGen n
+  tm <- either (throwM . ParseException) return $ parseString fp content
+  liftIO $ B.writeFile outfp $ codeGen tm
 
 programName :: String
 programName = "rain-ml"

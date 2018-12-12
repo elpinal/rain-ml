@@ -6,11 +6,15 @@ import Data.Bifunctor
 import Data.Char
 import Data.Void
 
+import Control.Monad.Combinators.Expr
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-parseString :: FilePath -> String -> Either String Int
+
+import qualified Language.RainML.Syntax as S
+
+parseString :: FilePath -> String -> Either String S.Term
 parseString fp xs = bimap parseErrorPretty id $ parse whileParser fp xs
 
 type Parser = Parsec Void String
@@ -34,6 +38,12 @@ parens = between (symbol "(") (symbol ")")
 integer :: Parser Int
 integer = lexeme L.decimal
 
+arith :: Parser S.Term
+arith = makeExprParser (S.Int <$> integer) arithOperators
+
+arithOperators :: [[Operator Parser S.Term]]
+arithOperators = [[InfixL $ S.Add <$ symbol "+"]]
+
 rword :: String -> Parser ()
 rword w = lexeme $ try $ string w *> notFollowedBy alphaNumChar
 
@@ -49,5 +59,5 @@ identifier = lexeme $ try $ p >>= check
         then fail $ "keyword " ++ show x ++ " is not an identifier"
         else return x
 
-whileParser :: Parser Int
-whileParser = between sc eof integer
+whileParser :: Parser S.Term
+whileParser = between sc eof arith
