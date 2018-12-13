@@ -55,7 +55,7 @@ compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
   content <- liftIO $ readFile fp
   tm <- either (throwM . ParseException) return $ parseString fp content
-  either (throwM . ExternalTypeError) return $ typeOf tm >>= expect IntType
+  either (throwM . ExternalTypeError) return $ typecheck tm
   let inter = I.translate tm
   either (throwM . IntermediateTypeError) return $ I.typecheck inter
   liftIO $ B.writeFile outfp $ codeGen inter

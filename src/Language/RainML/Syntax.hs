@@ -4,7 +4,7 @@ module Language.RainML.Syntax
   , Type(..)
   , TypeError(..)
   , Typing(..)
-  , expect
+  , typecheck
 
   , Position(..)
   , SourcePos(..)
@@ -45,6 +45,9 @@ expect :: Type -> Type -> Either TypeError ()
 expect t1 t2
   | equal t1 t2 = return ()
   | otherwise   = Left $ TypeMismatch t1 t2
+
+typecheck :: Term -> Either TypeError ()
+typecheck t = typeOf t >>= expect IntType
 
 class Typing a where
   typeOf :: a -> Either TypeError Type
