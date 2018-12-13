@@ -4,6 +4,7 @@
 
 module Language.RainML.Intermediate
   ( translate
+  , Literal(..)
   , Value(..)
   , ArithOp(..)
   , Decl(..)
@@ -22,10 +23,16 @@ import qualified Language.RainML.Syntax as S
 
 data Type
   = IntType
+  | BoolType
+  deriving (Eq, Show)
+
+data Literal
+  = Int Int
+  | Bool Bool
   deriving (Eq, Show)
 
 data Value
-  = Int Int
+  = Lit Literal
   | Var Int
   deriving (Eq, Show)
 
@@ -46,15 +53,18 @@ data Term
 var :: Int -> Term
 var = Value . Var
 
+int :: Int -> Value
+int = Lit . Int
+
 translate :: S.Term -> Term
 translate = foldr Let (var 0) . toDecls
 
 toDecls :: S.Term -> [Decl]
-toDecls (S.Int n)     = [Id $ Int n]
+toDecls (S.Int n)     = [Id $ int n]
 toDecls (S.Add t1 t2) = toDecls t1 ++ addLeft t2 -- Assume associativity.
 
 addLeft :: S.Term -> [Decl]
-addLeft (S.Int n)     = [Arith Add (Var 0) $ Int n]
+addLeft (S.Int n)     = [Arith Add (Var 0) $ int n]
 addLeft (S.Add t1 t2) = addLeft t1 ++ addLeft t2
 
 data TypeError
@@ -85,8 +95,12 @@ expect t1 t2
 class Typing a where
   typeOf :: Members [Reader Context, Error TypeError] r => a -> Eff r Type
 
+instance Typing Literal where
+  typeOf (Int _)  = return IntType
+  typeOf (Bool _) = return BoolType
+
 instance Typing Value where
-  typeOf (Int _) = return IntType
+  typeOf (Lit l) = typeOf l
   typeOf (Var n) = ask >>= get n
 
 instance Typing Decl where

@@ -40,13 +40,20 @@ codeGen tm = toLazyByteString $ mconcat
   , halt
   ]
 
+litToInt :: I.Literal -> Int
+litToInt (I.Int n)  = n
+litToInt (I.Bool b) = fromEnum b
+
+literal :: I.Literal -> Builder
+literal = moveImmediate (Reg 0) . litToInt
+
 value :: I.Value -> Builder
-value (I.Int n) = moveImmediate (Reg 0) n
+value (I.Lit l) = literal l
 value (I.Var _) = mempty -- Subject to change.
 
 decl :: I.Decl -> Builder
-decl (I.Id (I.Int n))                    = moveImmediate (Reg 0) n
-decl (I.Arith I.Add (I.Var _) (I.Int n)) = addImmediate (Reg 0) (Reg 0) n -- Subject to change.
+decl (I.Id (I.Lit l))                    = literal l
+decl (I.Arith I.Add (I.Var _) (I.Lit l)) = addImmediate (Reg 0) (Reg 0) $ litToInt l -- Subject to change.
 
 term :: I.Term -> Builder
 term (I.Value v) = value v
