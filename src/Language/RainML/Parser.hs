@@ -38,8 +38,8 @@ parens = between (symbol "(") (symbol ")")
 integer :: Parser Int
 integer = lexeme L.decimal
 
-arith :: Parser S.Term
-arith = makeExprParser (S.Lit . S.Int <$> integer) arithOperators
+term :: Parser S.Term
+term = makeExprParser (fmap S.Lit $ fmap S.Bool bool <|> fmap S.Int integer) arithOperators
 
 arithOperators :: [[Operator Parser S.Term]]
 arithOperators = [[InfixL $ S.Add <$ symbol "+"]]
@@ -62,12 +62,9 @@ identifier = lexeme $ try $ p >>= check
         then fail $ "keyword " ++ show x ++ " is not an identifier"
         else return x
 
-bool :: Parser S.Literal
-bool = S.Bool True <$ rword "true"
-   <|> S.Bool False <$ rword "false"
-
-term :: Parser S.Term
-term = arith <|> S.Lit <$> bool
+bool :: Parser Bool
+bool = True <$ rword "true"
+   <|> False <$ rword "false"
 
 whileParser :: Parser S.Term
 whileParser = between sc eof term
