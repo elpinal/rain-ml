@@ -45,6 +45,6 @@ instance Typing Literal where
 instance Typing Term where
   typeOf (Lit l) = typeOf l
   typeOf (Add t1 t2) = do
-    ty1 <- typeOf t1 >>= expect IntType
-    ty2 <- typeOf t2 >>= expect IntType
+    typeOf t1 >>= expect IntType
+    typeOf t2 >>= expect IntType
     return IntType
