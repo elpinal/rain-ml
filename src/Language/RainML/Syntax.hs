@@ -43,20 +43,20 @@ data Term
   deriving (Eq, Show)
 
 data TypeError
-  = TypeMismatch Type Type
+  = TypeMismatch Position Type Type
   deriving (Eq, Show)
 
 -- Type equality.
 equal :: Type -> Type -> Bool
 equal = (==)
 
-expect :: Type -> Type -> Either TypeError ()
-expect t1 t2
+expect :: Position -> Type -> Type -> Either TypeError ()
+expect pos t1 t2
   | equal t1 t2 = return ()
-  | otherwise   = Left $ TypeMismatch t1 t2
+  | otherwise   = Left $ TypeMismatch pos t1 t2
 
-typecheck :: Term -> Either TypeError ()
-typecheck t = typeOf t >>= expect IntType
+typecheck :: Positional Term -> Either TypeError ()
+typecheck t = typeOf (fromPositional t) >>= expect (getPosition t) IntType
 
 class Typing a where
   typeOf :: a -> Either TypeError Type
@@ -68,6 +68,6 @@ instance Typing Literal where
 instance Typing Term where
   typeOf (Lit l) = typeOf $ fromPositional l
   typeOf (Add t1 t2) = do
-    typeOf (fromPositional t1) >>= expect IntType
-    typeOf (fromPositional t2) >>= expect IntType
+    typeOf (fromPositional t1) >>= expect (getPosition t1) IntType
+    typeOf (fromPositional t2) >>= expect (getPosition t2) IntType
     return IntType

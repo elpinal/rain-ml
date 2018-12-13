@@ -56,7 +56,7 @@ compile fp outfp = do
   content <- liftIO $ readFile fp
   tm <- either (throwM . ParseException) return $ parseString fp content
   either (throwM . ExternalTypeError) return $ typecheck tm
-  let inter = I.translate tm
+  let inter = I.translate $ fromPositional tm
   either (throwM . IntermediateTypeError) return $ I.typecheck inter
   liftIO $ B.writeFile outfp $ codeGen inter
 

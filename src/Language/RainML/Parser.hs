@@ -13,8 +13,8 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import qualified Language.RainML.Syntax as S
 
-parseString :: FilePath -> String -> Either String S.Term
-parseString fp xs = bimap parseErrorPretty S.fromPositional $ parse whileParser fp xs
+parseString :: FilePath -> String -> Either String (S.Positional S.Term)
+parseString fp xs = bimap parseErrorPretty id $ parse whileParser fp xs
 
 type Parser = Parsec Void String
 
