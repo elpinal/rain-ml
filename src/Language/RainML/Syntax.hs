@@ -5,7 +5,18 @@ module Language.RainML.Syntax
   , TypeError(..)
   , Typing(..)
   , expect
+
+  , Position(..)
+  , SourcePos(..)
   ) where
+
+import Text.Megaparsec.Pos
+
+data Position = Position
+  { start :: SourcePos
+  , end   :: SourcePos
+  }
+  deriving (Eq, Show)
 
 data Type
   = IntType
@@ -13,13 +24,13 @@ data Type
   deriving (Eq, Show)
 
 data Literal
-  = Int Int
-  | Bool Bool
+  = Int Position Int
+  | Bool Position Bool
   deriving (Eq, Show)
 
 data Term
-  = Add Term Term
-  | Lit Literal
+  = Add Position Term Term
+  | Lit Position Literal
   deriving (Eq, Show)
 
 data TypeError
@@ -39,12 +50,12 @@ class Typing a where
   typeOf :: a -> Either TypeError Type
 
 instance Typing Literal where
-  typeOf (Int _)  = return IntType
-  typeOf (Bool _) = return BoolType
+  typeOf (Int _ _)  = return IntType
+  typeOf (Bool _ _) = return BoolType
 
 instance Typing Term where
-  typeOf (Lit l) = typeOf l
-  typeOf (Add t1 t2) = do
+  typeOf (Lit _ l) = typeOf l
+  typeOf (Add _ t1 t2) = do
     typeOf t1 >>= expect IntType
     typeOf t2 >>= expect IntType
     return IntType

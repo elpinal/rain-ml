@@ -63,17 +63,17 @@ translate :: S.Term -> Term
 translate = foldr Let (var 0) . toDecls
 
 fromLiteral :: S.Literal -> [Decl]
-fromLiteral (S.Int n)  = [Id $ int n]
-fromLiteral (S.Bool b) = [Id $ bool b]
+fromLiteral (S.Int _ n)  = [Id $ int n]
+fromLiteral (S.Bool _ b) = [Id $ bool b]
 
 toDecls :: S.Term -> [Decl]
-toDecls (S.Lit l)     = fromLiteral l
-toDecls (S.Add t1 t2) = toDecls t1 ++ addLeft t2 -- Assume associativity.
+toDecls (S.Lit _ l)     = fromLiteral l
+toDecls (S.Add _ t1 t2) = toDecls t1 ++ addLeft t2 -- Assume associativity.
 
 addLeft :: S.Term -> [Decl]
-addLeft (S.Lit (S.Int n))  = [Arith Add (Var 0) $ int n]
-addLeft (S.Lit (S.Bool _)) = error "bug"
-addLeft (S.Add t1 t2)      = addLeft t1 ++ addLeft t2
+addLeft (S.Lit _ (S.Int _ n))  = [Arith Add (Var 0) $ int n]
+addLeft (S.Lit _ (S.Bool _ _)) = error "bug"
+addLeft (S.Add _ t1 t2)        = addLeft t1 ++ addLeft t2
 
 data TypeError
   = TypeMismatch Type Type
