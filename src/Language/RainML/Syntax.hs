@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 module Language.RainML.Syntax
   ( Term(..)
   , Literal(..)
@@ -6,6 +8,7 @@ module Language.RainML.Syntax
   , Typing(..)
   , typecheck
 
+  , Positional(..)
   , Position(..)
   , SourcePos(..)
   ) where
@@ -18,19 +21,25 @@ data Position = Position
   }
   deriving (Eq, Show)
 
+data Positional a = Positional
+  { getPosition :: Position
+  , fromPositional :: a
+  }
+  deriving (Eq, Show, Functor)
+
 data Type
   = IntType
   | BoolType
   deriving (Eq, Show)
 
 data Literal
-  = Int Position Int
-  | Bool Position Bool
+  = Int Int
+  | Bool Bool
   deriving (Eq, Show)
 
 data Term
-  = Add Position Term Term
-  | Lit Position Literal
+  = Add (Positional Term) (Positional Term)
+  | Lit (Positional Literal)
   deriving (Eq, Show)
 
 data TypeError
@@ -53,12 +62,12 @@ class Typing a where
   typeOf :: a -> Either TypeError Type
 
 instance Typing Literal where
-  typeOf (Int _ _)  = return IntType
-  typeOf (Bool _ _) = return BoolType
+  typeOf (Int _)  = return IntType
+  typeOf (Bool _) = return BoolType
 
 instance Typing Term where
-  typeOf (Lit _ l) = typeOf l
-  typeOf (Add _ t1 t2) = do
-    typeOf t1 >>= expect IntType
-    typeOf t2 >>= expect IntType
+  typeOf (Lit l) = typeOf $ fromPositional l
+  typeOf (Add t1 t2) = do
+    typeOf (fromPositional t1) >>= expect IntType
+    typeOf (fromPositional t2) >>= expect IntType
     return IntType

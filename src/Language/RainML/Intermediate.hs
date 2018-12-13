@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Language.RainML.Intermediate
   ( translate
@@ -20,6 +21,7 @@ import Control.Monad.Freer.Error
 import Control.Monad.Freer.Reader
 
 import qualified Language.RainML.Syntax as S
+import Language.RainML.Syntax (fromPositional)
 
 data Type
   = IntType
@@ -63,17 +65,17 @@ translate :: S.Term -> Term
 translate = foldr Let (var 0) . toDecls
 
 fromLiteral :: S.Literal -> [Decl]
-fromLiteral (S.Int _ n)  = [Id $ int n]
-fromLiteral (S.Bool _ b) = [Id $ bool b]
+fromLiteral (S.Int n)  = [Id $ int n]
+fromLiteral (S.Bool b) = [Id $ bool b]
 
 toDecls :: S.Term -> [Decl]
-toDecls (S.Lit _ l)     = fromLiteral l
-toDecls (S.Add _ t1 t2) = toDecls t1 ++ addLeft t2 -- Assume associativity.
+toDecls (S.Lit l)     = fromLiteral $ fromPositional l
+toDecls (S.Add t1 t2) = toDecls (fromPositional t1) ++ addLeft (fromPositional t2) -- Assume associativity.
 
 addLeft :: S.Term -> [Decl]
-addLeft (S.Lit _ (S.Int _ n))  = [Arith Add (Var 0) $ int n]
-addLeft (S.Lit _ (S.Bool _ _)) = error "bug"
-addLeft (S.Add _ t1 t2)        = addLeft t1 ++ addLeft t2
+addLeft (S.Lit (fromPositional -> S.Int n))  = [Arith Add (Var 0) $ int n]
+addLeft (S.Lit (fromPositional -> S.Bool _)) = error "bug"
+addLeft (S.Add t1 t2)                        = addLeft (fromPositional t1) ++ addLeft (fromPositional t2)
 
 data TypeError
   = TypeMismatch Type Type
