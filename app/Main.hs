@@ -22,8 +22,8 @@ data ParseException
 
 instance Show ParseException where
   show (ParseException s) = s
-  show (ExternalTypeError e) = show e
-  show (IntermediateTypeError e) = show e
+  show (ExternalTypeError e) = "type error: " ++ show e
+  show (IntermediateTypeError e) = "[bug] internal type error: " ++ show e
 
 instance Exception ParseException
 
