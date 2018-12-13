@@ -56,16 +56,24 @@ var = Value . Var
 int :: Int -> Value
 int = Lit . Int
 
+bool :: Bool -> Value
+bool = Lit . Bool
+
 translate :: S.Term -> Term
 translate = foldr Let (var 0) . toDecls
 
+fromLiteral :: S.Literal -> [Decl]
+fromLiteral (S.Int n)  = [Id $ int n]
+fromLiteral (S.Bool b) = [Id $ bool b]
+
 toDecls :: S.Term -> [Decl]
-toDecls (S.Int n)     = [Id $ int n]
+toDecls (S.Lit l)     = fromLiteral l
 toDecls (S.Add t1 t2) = toDecls t1 ++ addLeft t2 -- Assume associativity.
 
 addLeft :: S.Term -> [Decl]
-addLeft (S.Int n)     = [Arith Add (Var 0) $ int n]
-addLeft (S.Add t1 t2) = addLeft t1 ++ addLeft t2
+addLeft (S.Lit (S.Int n))  = [Arith Add (Var 0) $ int n]
+addLeft (S.Lit (S.Bool _)) = error "bug"
+addLeft (S.Add t1 t2)      = addLeft t1 ++ addLeft t2
 
 data TypeError
   = TypeMismatch Type Type

@@ -39,7 +39,7 @@ integer :: Parser Int
 integer = lexeme L.decimal
 
 arith :: Parser S.Term
-arith = makeExprParser (S.Int <$> integer) arithOperators
+arith = makeExprParser (S.Lit . S.Int <$> integer) arithOperators
 
 arithOperators :: [[Operator Parser S.Term]]
 arithOperators = [[InfixL $ S.Add <$ symbol "+"]]
