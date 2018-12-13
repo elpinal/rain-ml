@@ -11,6 +11,8 @@ module Language.RainML.Syntax
   , Positional(..)
   , Position(..)
   , SourcePos(..)
+
+  , Display(..)
   ) where
 
 import Text.Megaparsec.Pos
@@ -21,16 +23,36 @@ data Position = Position
   }
   deriving (Eq, Show)
 
+class Display a where
+  displays :: a -> ShowS
+  display :: a -> String
+
+  displays x s = display x ++ s
+  display x = displays x ""
+
+instance Display Position where
+  displays p = showString (sourcePosPretty $ start p) . showString ".." . showEnd (end p)
+    where
+      showEnd s = showPos (sourceLine s) . showChar ':' . showPos (sourceColumn s)
+      showPos = shows . unPos
+
 data Positional a = Positional
   { getPosition :: Position
   , fromPositional :: a
   }
   deriving (Eq, Show, Functor)
 
+instance Show a => Display (Positional a) where
+  displays p = displays (getPosition p) . showString ": " . shows (fromPositional p)
+
 data Type
   = IntType
   | BoolType
   deriving (Eq, Show)
+
+instance Display Type where
+  display IntType  = "int"
+  display BoolType = "bool"
 
 data Literal
   = Int Int
@@ -45,6 +67,9 @@ data Term
 data TypeError
   = TypeMismatch Position Type Type
   deriving (Eq, Show)
+
+instance Display TypeError where
+  displays (TypeMismatch p t1 t2) = displays p . showString ": type mismatch: expected `" . displays t1 . showString "`, but found `" . displays t2 . showChar '`'
 
 -- Type equality.
 equal :: Type -> Type -> Bool
