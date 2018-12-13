@@ -3,14 +3,12 @@ module Language.RainML.Parser
   ) where
 
 import Data.Bifunctor
-import Data.Char
 import Data.Void
 
 import Control.Monad.Combinators.Expr
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-
 
 import qualified Language.RainML.Syntax as S
 
@@ -38,17 +36,22 @@ parens = between (symbol "(") (symbol ")")
 integer :: Parser Int
 integer = lexeme L.decimal
 
+bool :: Parser Bool
+bool = True <$ reserved "true"
+   <|> False <$ reserved "false"
+
 term :: Parser S.Term
 term = makeExprParser (fmap S.Lit $ fmap S.Bool bool <|> fmap S.Int integer) arithOperators
 
 arithOperators :: [[Operator Parser S.Term]]
 arithOperators = [[InfixL $ S.Add <$ symbol "+"]]
 
-rword :: String -> Parser ()
-rword w = lexeme $ try $ string w *> notFollowedBy alphaNumChar
+-- Reserved words, that is, keywords.
+reserved :: String -> Parser ()
+reserved w = lexeme $ try $ string w *> notFollowedBy alphaNumChar
 
-rws :: [String]
-rws =
+reservedWords :: [String]
+reservedWords =
   [ "true"
   , "false"
   ]
@@ -58,13 +61,9 @@ identifier = lexeme $ try $ p >>= check
   where
     p = (:) <$> letterChar <*> many alphaNumChar
     check x =
-      if x `elem` rws
+      if x `elem` reservedWords
         then fail $ "keyword " ++ show x ++ " is not an identifier"
         else return x
-
-bool :: Parser Bool
-bool = True <$ rword "true"
-   <|> False <$ rword "false"
 
 whileParser :: Parser S.Term
 whileParser = between sc eof term
