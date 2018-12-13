@@ -48,7 +48,10 @@ rword :: String -> Parser ()
 rword w = lexeme $ try $ string w *> notFollowedBy alphaNumChar
 
 rws :: [String]
-rws = []
+rws =
+  [ "true"
+  , "false"
+  ]
 
 identifier :: Parser String
 identifier = lexeme $ try $ p >>= check
@@ -59,5 +62,12 @@ identifier = lexeme $ try $ p >>= check
         then fail $ "keyword " ++ show x ++ " is not an identifier"
         else return x
 
+bool :: Parser S.Literal
+bool = S.Bool True <$ rword "true"
+   <|> S.Bool False <$ rword "false"
+
+term :: Parser S.Term
+term = arith <|> S.Lit <$> bool
+
 whileParser :: Parser S.Term
-whileParser = between sc eof arith
+whileParser = between sc eof term
