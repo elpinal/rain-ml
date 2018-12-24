@@ -7,8 +7,10 @@ module Language.RainML.Asm
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
+import Data.Coerce
 import Data.Heap (Heap)
 import qualified Data.Heap as Heap
+import Data.List
 import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
 
@@ -95,3 +97,25 @@ mcs (Heap.viewMin -> Just (Heap.payload -> n, heap)) graph = n : mcs (Heap.map f
       | m `Set.member` (Map.keysSet graph `Set.intersection` neighbors n graph) = Heap.Entry (incWeight w) m
       | otherwise = e
 mcs _ _ = []
+
+newtype Color = Color Int
+  deriving (Eq, Show)
+
+color :: [Int] -> Graph -> Map.Map Int Color
+color ns graph = foldl (\m n -> Map.insert n (colorEach n graph m) m) mempty ns
+
+minfree :: [Color] -> Color
+minfree xs = coerce $ minfrom 0 (length xs, coerce xs)
+
+minfrom :: Int -> (Int, [Int]) -> Int
+minfrom a (n, xs)
+  | n == 0     = a
+  | m == b - a = minfrom b (n - m, vs)
+  | otherwise  = minfrom a (m, us)
+    where
+      (us, vs) = partition (< b) xs
+      b = a + 1 + n `div` 2
+      m = length us
+
+colorEach :: Int -> Graph -> Map.Map Int Color -> Color
+colorEach n graph m = minfree $ Map.elems $ Map.restrictKeys m $ neighbors n graph Set.\\ Map.keysSet m
