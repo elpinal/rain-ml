@@ -54,3 +54,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - rain-ml
+    - hspec

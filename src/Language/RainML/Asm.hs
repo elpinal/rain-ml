@@ -1,5 +1,6 @@
 module Language.RainML.Asm
-  (
+  ( makeGraph
+  , Graph
   ) where
 
 import Control.Monad.Trans.Class
@@ -30,14 +31,19 @@ liveVars (I.Var n) = Set.singleton n
 liveVars _         = mempty
 
 interfere :: Graph -> Int -> LiveVars -> Graph
-interfere graph n ls = g $ Map.alter f n graph
+interfere graph n ls
+  | Set.null ls = graph
+  | otherwise   = g $ Map.alter f n graph
   where
     f :: Maybe (Set.Set Int) -> Maybe (Set.Set Int)
     f Nothing   = return ls
     f (Just ks) = return $ ls <> ks
 
     g :: Graph -> Graph
-    g graph1 = Map.fromSet (const $ Set.singleton n) ls <> graph1
+    g graph1 = Map.unionWith (<>) (Map.fromSet (const $ Set.singleton n) ls) graph1
+
+makeGraph :: I.Term -> Graph
+makeGraph t = evalState (evalStateT (buildGraph t) mempty) 0
 
 buildGraph :: I.Term -> StateT LiveVars Counter Graph
 buildGraph (I.Value v) = do
