@@ -24,6 +24,7 @@ dependencies:
 - bytestring >= 0.10.8.2
 - containers >= 0.6.0.1
 - freer-simple >= 1.1.0.0
+- heaps >= 0.3.6
 - megaparsec >= 7.0.4
 - optparse-applicative >= 0.14.3.0
 - parser-combinators >= 1.0.0

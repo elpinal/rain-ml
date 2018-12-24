@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module Language.RainML.Asm
   ( makeGraph
   , Graph
@@ -5,6 +7,8 @@ module Language.RainML.Asm
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
+import Data.Heap (Heap)
+import qualified Data.Heap as Heap
 import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
 
@@ -70,3 +74,24 @@ buildGraphDecl_ graph (I.Arith _ v1 v2) = do
   let newLs = Set.map (+ i) $ liveVars v1 <> liveVars v2
   put $ newLs <> ls
   return $ interfere graph (i - 1) ls
+
+newtype Weight = Weight Int
+  deriving (Eq, Show)
+
+instance Ord Weight where
+  (Weight x) <= (Weight y) = x >= y
+
+incWeight :: Weight -> Weight
+incWeight (Weight n) = Weight $ n + 1
+
+neighbors :: Int -> Graph -> Set.Set Int
+neighbors n graph = Map.findWithDefault mempty n graph
+
+-- Maximum cardinality search.
+mcs :: Heap (Heap.Entry Weight Int) -> Graph -> [Int]
+mcs (Heap.viewMin -> Just (Heap.payload -> n, heap)) graph = n : mcs (Heap.map f heap) (Map.delete n graph)
+  where
+    f e @ (Heap.Entry w m)
+      | m `Set.member` (Map.keysSet graph `Set.intersection` neighbors n graph) = Heap.Entry (incWeight w) m
+      | otherwise = e
+mcs _ _ = []
