@@ -14,7 +14,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Language.RainML.Syntax as S
 
 parseString :: FilePath -> String -> Either String (S.Positional S.Term)
-parseString fp xs = bimap parseErrorPretty id $ parse whileParser fp xs
+parseString fp xs = bimap errorBundlePretty id $ parse whileParser fp xs
 
 type Parser = Parsec Void String
 
@@ -29,9 +29,9 @@ sc = L.space space1 line block
 
 lexeme :: Parser a -> Parser (S.Positional a)
 lexeme p = L.lexeme sc $ do
-  start <- getPosition
+  start <- getSourcePos
   x <- p
-  end <- getPosition
+  end <- getSourcePos
   return $ S.Positional (S.Position start end) x
 
 symbol :: String -> Parser (S.Positional String)

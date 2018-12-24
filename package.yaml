@@ -23,7 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - bytestring >= 0.10.8.2
 - freer-simple >= 1.1.0.0
-- megaparsec >= 6.5.0
+- megaparsec >= 7.0.4
 - optparse-applicative >= 0.14.3.0
 - parser-combinators >= 1.0.0
 - safe-exceptions >= 0.1.7.0
