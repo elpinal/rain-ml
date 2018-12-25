@@ -88,10 +88,10 @@ buildGraphDecl_ graph (I.Id v) = do
   put $ newLs <> ls
   return $ interfere graph (i - 1) (ls Set.\\ newLs)
 
-buildGraphDecl_ graph (I.Arith _ v1 v2) = do
+buildGraphDecl_ graph (I.Arith _ n v2) = do
   i <- lift get
   ls <- gets $ Set.delete $ i - 1
-  let newLs = Set.map (+ i) $ liveVars v1 <> liveVars v2
+  let newLs = Set.map (+ i) $ liveVars (I.Var n) <> liveVars v2
   put $ newLs <> ls
   return $ interfere graph (i - 1) ls
 

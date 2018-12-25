@@ -25,12 +25,10 @@ import Language.RainML.Syntax (fromPositional)
 
 data Type
   = IntType
-  | BoolType
   deriving (Eq, Show)
 
 data Literal
   = Int Int
-  | Bool Bool
   deriving (Eq, Show)
 
 data Value
@@ -44,7 +42,7 @@ data ArithOp
 
 data Decl
   = Id Value
-  | Arith ArithOp Value Value
+  | Arith ArithOp Int Value
   deriving (Eq, Show)
 
 data Term
@@ -58,24 +56,24 @@ var = Value . Var
 int :: Int -> Value
 int = Lit . Int
 
-bool :: Bool -> Value
-bool = Lit . Bool
-
 translate :: S.Term -> Term
 translate = foldr Let (var 0) . toDecls
 
 fromLiteral :: S.Literal -> [Decl]
 fromLiteral (S.Int n)  = [Id $ int n]
-fromLiteral (S.Bool b) = [Id $ bool b]
+fromLiteral (S.Bool b) = [Id $ int $ fromEnum b]
 
 toDecls :: S.Term -> [Decl]
 toDecls (S.Lit l)     = fromLiteral $ fromPositional l
-toDecls (S.Add t1 t2) = toDecls (fromPositional t1) ++ addLeft (fromPositional t2) -- Assume associativity.
-
-addLeft :: S.Term -> [Decl]
-addLeft (S.Lit (fromPositional -> S.Int n))  = [Arith Add (Var 0) $ int n]
-addLeft (S.Lit (fromPositional -> S.Bool _)) = error "bug"
-addLeft (S.Add t1 t2)                        = addLeft (fromPositional t1) ++ addLeft (fromPositional t2)
+toDecls (S.Add t1 t2) =
+  let xs = toDecls (fromPositional t1) in
+  let ys = toDecls (fromPositional t2) in
+  let (zs, u) =
+        if length xs <= length ys
+          then (xs ++ ys, length ys)
+          else (ys ++ xs, length xs)
+  in
+    zs ++ [Arith Add 0 $ Var u]
 
 data TypeError
   = TypeMismatch Type Type
@@ -107,7 +105,6 @@ class Typing a where
 
 instance Typing Literal where
   typeOf (Int _)  = return IntType
-  typeOf (Bool _) = return BoolType
 
 instance Typing Value where
   typeOf (Lit l) = typeOf l
@@ -115,8 +112,8 @@ instance Typing Value where
 
 instance Typing Decl where
   typeOf (Id v) = typeOf v
-  typeOf (Arith Add v1 v2) = do
-    typeOf v1 >>= expect IntType
+  typeOf (Arith Add n v2) = do
+    typeOf (Var n) >>= expect IntType
     typeOf v2 >>= expect IntType
     return IntType
 
