@@ -3,9 +3,17 @@
 module Language.RainML.Asm
   ( makeGraph
   , Graph
+  , Value(..)
+  , Operand(..)
+  , Inst(..)
+  , Block(..)
+  , Reg(..)
+  , toAsm
+  , TranslateError
   ) where
 
 import Control.Monad.Trans.Class
+import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
 import Data.Coerce
 import Data.Heap (Heap)
@@ -42,7 +50,7 @@ type Graph = Map.Map Int (Set.Set Int)
 
 type Counter = State Int
 
-inc :: StateT LiveVars Counter ()
+inc :: Monad m => StateT a (StateT Int m) ()
 inc = lift $ modify (+ 1)
 
 liveVars :: I.Value -> LiveVars
@@ -83,10 +91,10 @@ buildGraphDecl_ graph (I.Id v) = do
   put $ newLs <> ls
   return $ interfere graph (i - 1) (ls Set.\\ newLs)
 
-buildGraphDecl_ graph (I.Arith _ v1 v2) = do
+buildGraphDecl_ graph (I.Arith _ n v2) = do
   i <- lift get
   ls <- gets $ Set.delete $ i - 1
-  let newLs = Set.map (+ i) $ liveVars v1 <> liveVars v2
+  let newLs = Set.map (+ i) $ liveVars (I.Var n) <> liveVars v2
   put $ newLs <> ls
   return $ interfere graph (i - 1) ls
 
@@ -111,7 +119,7 @@ mcs (Heap.viewMin -> Just (Heap.payload -> n, heap)) graph = n : mcs (Heap.map f
       | otherwise = e
 mcs _ _ = []
 
-newtype Color = Color Int
+newtype Color = Color { getColor :: Int }
   deriving (Eq, Show)
 
 color :: [Int] -> Graph -> Map.Map Int Color
@@ -131,4 +139,55 @@ minfrom a (n, xs)
       m = length us
 
 colorEach :: Int -> Graph -> Map.Map Int Color -> Color
-colorEach n graph m = minfree $ Map.elems $ Map.restrictKeys m $ neighbors n graph Set.\\ Map.keysSet m
+colorEach n graph m = minfree $ Map.elems $ Map.restrictKeys m $ neighbors n graph
+
+regalloc :: I.Term -> Map.Map Int Color
+regalloc t = color ns graph
+  where
+    (graph, n) = runState (evalStateT (buildGraph t) mempty) 0
+    ns = mcs (Heap.fromList $ map (Heap.Entry $ Weight 0) [0 .. n - 1]) graph
+
+toAsm :: I.Term -> Either TranslateError Block
+toAsm t = runExcept $ evalStateT (evalStateT (fromTerm t) $ regalloc t) 0
+
+type Coloring = Map.Map Int Color
+type Translator = StateT Coloring (StateT Int (Except TranslateError))
+
+data TranslateError
+  = RegisterSpilling
+  deriving (Eq, Show)
+
+fromTerm :: I.Term -> Translator Block
+fromTerm (I.Value v) = fromValue v >>= \o -> return $ Block [Mov (Reg 0) o]
+fromTerm (I.Let d t) = do
+  Block is <- fromTerm t
+  inc
+  i <- fromDecl d
+  return $ Block $ i : is
+
+fromDecl :: I.Decl -> Translator Inst
+fromDecl (I.Id v) = do
+  o <- fromValue v
+  r <- fromVar (-1)
+  return $ Mov r o
+fromDecl (I.Arith I.Add n v) = do
+  o <- fromValue v
+  s <- fromVar n
+  d <- fromVar (-1)
+  return $ Add d s o
+
+fromValue :: I.Value -> Translator Operand
+fromValue (I.Lit l) = fromLiteral l
+fromValue (I.Var n) = Register <$> fromVar n
+
+fromVar :: Int -> Translator Reg
+fromVar n = do
+  m <- get
+  i <- lift get
+  let c = Map.findWithDefault (error "fromVar: unexpected error") (n + i) m
+  if getColor c < 16
+    then return $ Reg $ fromIntegral $ getColor c
+    else lift $ lift $ throwE RegisterSpilling
+
+fromLiteral :: I.Literal -> Translator Operand
+fromLiteral (I.Int n) = return $ Value $ Imm $ fromIntegral n
