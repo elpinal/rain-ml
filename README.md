@@ -10,6 +10,6 @@
 
 ## Goals
 
-- [not yet] GC-free memory management by region inference
-- [not yet] ML modules using F-ing modules
-- [not yet] Ad-hoc polymorphism by modular implicits
+- [ ] GC-free memory management by region inference
+- [ ] ML modules using F-ing modules
+- [ ] Ad-hoc polymorphism by modular implicits
