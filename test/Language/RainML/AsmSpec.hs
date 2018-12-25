@@ -14,7 +14,7 @@ n5 = Lit $ Int 5
 spec :: Spec
 spec = do
   describe "makeGraph" $
-    it "makes an interfere graph from an intermediate term" $ do
+    it "makes an interference graph from an intermediate term" $ do
       makeGraph (Value $ n5)                                                            `shouldBe` mempty
       makeGraph (Value $ Var 0)                                                         `shouldBe` mempty
       makeGraph (Let (Id n5) $ Value $ Var 0)                                           `shouldBe` mempty
