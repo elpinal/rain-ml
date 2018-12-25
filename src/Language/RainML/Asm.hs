@@ -13,12 +13,25 @@ import qualified Data.Heap as Heap
 import Data.List
 import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
+import Data.Word
 
 import qualified Language.RainML.Intermediate as I
 
+newtype Reg = Reg Word8
+  deriving (Eq, Ord, Show)
+
+data Value
+  = Imm Word32
+  deriving (Eq, Show)
+
+data Operand
+  = Register Reg
+  | Value Value
+  deriving (Eq, Show)
+
 data Inst
-  = Mov
-  | Add
+  = Mov Reg Operand
+  | Add Reg Reg Operand
   deriving (Eq, Show)
 
 data Block = Block [Inst]
