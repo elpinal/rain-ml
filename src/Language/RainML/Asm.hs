@@ -139,7 +139,7 @@ minfrom a (n, xs)
       m = length us
 
 colorEach :: Int -> Graph -> Map.Map Int Color -> Color
-colorEach n graph m = minfree $ Map.elems $ Map.restrictKeys m $ neighbors n graph Set.\\ Map.keysSet m
+colorEach n graph m = minfree $ Map.elems $ Map.restrictKeys m $ neighbors n graph
 
 regalloc :: I.Term -> Map.Map Int Color
 regalloc t = color ns graph
