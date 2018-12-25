@@ -9,6 +9,7 @@ module Language.RainML.Asm
   , Block(..)
   , Reg(..)
   , toAsm
+  , TranslateError
   ) where
 
 import Control.Monad.Trans.Class
