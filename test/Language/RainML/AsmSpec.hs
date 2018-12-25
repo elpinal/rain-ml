@@ -5,7 +5,7 @@ import Test.Hspec
 import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
 
-import Language.RainML.Asm
+import Language.RainML.Asm hiding (Add, Value)
 import Language.RainML.Intermediate
 
 true :: Value

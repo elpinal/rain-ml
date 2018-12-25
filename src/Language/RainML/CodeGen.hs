@@ -10,11 +10,8 @@ import Data.ByteString.Builder
 import Data.Coerce
 import Data.Word
 
-import qualified Language.RainML.Intermediate as I
+import qualified Language.RainML.Asm as Asm
 import Language.RainML.Version
-
-newtype Reg = Reg Word8
-  deriving (Eq, Show)
 
 data Instruction
   = Move
@@ -33,47 +30,46 @@ instWithoutInfo i = inst i 0
 immBits :: Word8
 immBits = 0b100
 
-codeGen :: I.Term -> B.ByteString
-codeGen tm = toLazyByteString $ mconcat
+codeGen :: Asm.Block -> B.ByteString
+codeGen b = toLazyByteString $ mconcat
   [ word8 rainvmVersion
-  , term tm
-  , halt
+  , block b
   ]
 
-litToInt :: I.Literal -> Int
-litToInt (I.Int n)  = n
-litToInt (I.Bool b) = fromEnum b
+instruction :: Asm.Inst -> Builder
+instruction (Asm.Mov r o)     = move r o
+instruction (Asm.Add dr sr o) = add dr sr o
 
-literal :: I.Literal -> Builder
-literal = moveImmediate (Reg 0) . litToInt
+block :: Asm.Block -> Builder
+block (Asm.Block is) = foldMap instruction is <> halt
 
-value :: I.Value -> Builder
-value (I.Lit l) = literal l
-value (I.Var _) = mempty -- Subject to change.
+toWord32 :: Asm.Value -> Word32
+toWord32 (Asm.Imm w) = w
 
-decl :: I.Decl -> Builder
-decl (I.Id (I.Lit l))                    = literal l
-decl (I.Arith I.Add (I.Var _) (I.Lit l)) = addImmediate (Reg 0) (Reg 0) $ litToInt l -- Subject to change.
-
-term :: I.Term -> Builder
-term (I.Value v) = value v
-term (I.Let d t) = decl d <> term t
-
-moveImmediate :: Reg -> Int -> Builder
-moveImmediate dest imm = mconcat
+move :: Asm.Reg -> Asm.Operand -> Builder
+move dest (Asm.Value v) = mconcat
   [ inst Move immBits
   , reg dest
-  , word32BE $ fromIntegral imm
+  , word32BE $ toWord32 v
+  ]
+move dest (Asm.Register src) = mconcat
+  [ inst Move $ shiftR (coerce src) 3
+  , word8 $ coerce dest .|. shiftL (coerce src) 5
   ]
 
-addImmediate :: Reg -> Reg -> Int -> Builder
-addImmediate dest src imm = mconcat
+add :: Asm.Reg -> Asm.Reg -> Asm.Operand -> Builder
+add dest src (Asm.Value v) = mconcat
   [ inst Add $ immBits .|. shiftR (coerce src) 3
   , word8 $ coerce dest .|. shiftL (coerce src) 5
-  , word32BE $ fromIntegral imm
+  , word32BE $ toWord32 v
+  ]
+add dest src1 (Asm.Register src2) = mconcat
+  [ inst Add $ shiftR (coerce src1) 3
+  , word8 $ coerce src2 .|. shiftL (coerce src1) 5
+  , word8 $ shiftL (coerce dest) 3
   ]
 
-reg :: Reg -> Builder
+reg :: Asm.Reg -> Builder
 reg = word8 . coerce
 
 halt :: Builder

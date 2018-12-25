@@ -3,6 +3,11 @@
 module Language.RainML.Asm
   ( makeGraph
   , Graph
+  , Value(..)
+  , Operand(..)
+  , Inst(..)
+  , Block(..)
+  , Reg(..)
   ) where
 
 import Control.Monad.Trans.Class
