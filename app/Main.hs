@@ -54,14 +54,17 @@ run = do
     Version -> showVersion
     Build fp outfp -> compile fp outfp
 
+orThrow ::  (MonadThrow m, Exception e) => (a1 -> e) -> Either a1 a2 -> m a2
+orThrow c = either (throwM . c) return
+
 compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
 compile fp outfp = do
   content <- liftIO $ readFile fp
-  tm <- either (throwM . SyntaxError) return $ parseString fp content
-  either (throwM . ExternalTypeError) return $ typecheck tm
+  tm <- orThrow SyntaxError $ parseString fp content
+  orThrow ExternalTypeError $ typecheck tm
   let inter = I.translate $ fromPositional tm
-  either (throwM . IntermediateTypeError) return $ I.typecheck inter
-  asm <- either (throwM . TranslateError) return $ Asm.toAsm inter
+  orThrow IntermediateTypeError $ I.typecheck inter
+  asm <- orThrow TranslateError $ Asm.toAsm inter
   liftIO $ B.writeFile outfp $ codeGen asm
 
 programName :: String
