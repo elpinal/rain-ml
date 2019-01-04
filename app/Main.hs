@@ -52,20 +52,23 @@ run = do
   x <- liftIO $ customExecParser (prefs showHelpOnEmpty) $ info (commandParser <**> helper) $ fullDesc <> progDesc "A Rain ML compiler." <> header "Rain ML."
   case x of
     Version -> showVersion
-    Build fp outfp -> compile fp outfp
+    Build fp outfp -> compileFile fp outfp
 
 orThrow ::  (MonadThrow m, Exception e) => (a1 -> e) -> Either a1 a2 -> m a2
 orThrow c = either (throwM . c) return
 
-compile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
-compile fp outfp = do
-  content <- liftIO $ readFile fp
+compileFile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
+compileFile fp outfp = liftIO (readFile fp) >>= compile fp >>= liftIO . B.writeFile outfp
+
+compile :: MonadThrow m => FilePath -> String -> m B.ByteString
+compile fp content = do
   tm <- orThrow SyntaxError $ parseString fp content
   orThrow ExternalTypeError $ typecheck tm
+
   let inter = I.translate $ fromPositional tm
   orThrow IntermediateTypeError $ I.typecheck inter
-  asm <- orThrow TranslateError $ Asm.toAsm inter
-  liftIO $ B.writeFile outfp $ codeGen asm
+
+  fmap codeGen $ orThrow TranslateError $ Asm.toAsm inter
 
 programName :: String
 programName = "rain-ml"
