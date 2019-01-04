@@ -1,16 +1,27 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Language.RainML.Asm
-  ( makeGraph
-  , Graph
-  , Value(..)
+  ( Value(..)
   , Operand(..)
   , Inst(..)
   , Block(..)
   , Reg(..)
+
+  , typecheck
+
+  , makeGraph
+  , Graph
+
   , toAsm
   , TranslateError
   ) where
+
+import Data.Extensible
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
@@ -44,6 +55,74 @@ data Inst
 
 data Block = Block [Inst]
   deriving (Eq, Show)
+
+data Type
+  = IntType
+  | Code Context
+  deriving (Eq, Show)
+
+newtype Context = Context (Map.Map Reg Type)
+  deriving (Eq, Show)
+
+data TypeError
+  = UnboundRegister Reg
+  | NotIntType Type
+  deriving (Eq, Show)
+
+class Typed a where
+  type Output a
+
+  typeOf :: (Associate "ctx" (State Context) xs, Associate "err" (EitherEff TypeError) xs) => a -> Eff xs (Output a)
+
+instance Typed Value where
+  type Output Value = Type
+
+  typeOf (Imm _) = return IntType
+
+lookupReg :: (Associate "ctx" (State Context) xs, Associate "err" (EitherEff TypeError) xs) => Reg -> Eff xs Type
+lookupReg r = do
+  ctx <- getEff #ctx
+  case Map.lookup r $ coerce ctx of
+    Nothing -> throwEff #err $ UnboundRegister r
+    Just ty -> return ty
+
+instance Typed Reg where
+  type Output Reg = Type
+
+  typeOf = lookupReg
+
+instance Typed Operand where
+  type Output Operand = Type
+
+  typeOf (Register r) = typeOf r
+  typeOf (Value v)    = typeOf v
+
+updateReg :: Associate "ctx" (State Context) xs => Reg -> Type -> Eff xs ()
+updateReg r ty = modifyEff #ctx $ coerce $ Map.insert r ty
+
+expect :: (Typed a, Associate "ctx" (State Context) xs, Associate "err" (EitherEff TypeError) xs) => a -> (Output a -> Eff xs ()) -> Eff xs ()
+expect x f = typeOf x >>= f
+
+int :: Associate "err" (EitherEff TypeError) xs => Type -> Eff xs ()
+int IntType = return ()
+int ty      = throwEff #err $ NotIntType ty
+
+instance Typed Inst where
+  type Output Inst = ()
+
+  typeOf (Mov r op)      = typeOf op >>= updateReg r
+  typeOf (Add r op1 op2) = do
+    expect op1 int
+    expect op2 int
+    updateReg r IntType
+
+instance Typed Block where
+  type Output Block = ()
+
+  typeOf (Block is) = mapM_ typeOf is
+
+typecheck :: Context -> Block -> Either TypeError Context
+typecheck ctx block = leaveEff $ runEitherEff @ "err" $ execStateEff @ "ctx" (typeOf block) ctx
 
 type LiveVars = Set.Set Int
 type Graph = Map.Map Int (Set.Set Int)
@@ -114,7 +193,7 @@ neighbors n graph = Map.findWithDefault mempty n graph
 mcs :: Heap (Heap.Entry Weight Int) -> Graph -> [Int]
 mcs (Heap.viewMin -> Just (Heap.payload -> n, heap)) graph = n : mcs (Heap.map f heap) (Map.delete n graph)
   where
-    f e @ (Heap.Entry w m)
+    f e@(Heap.Entry w m)
       | m `Set.member` (Map.keysSet graph `Set.intersection` neighbors n graph) = Heap.Entry (incWeight w) m
       | otherwise = e
 mcs _ _ = []
