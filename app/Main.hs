@@ -17,13 +17,13 @@ main :: IO ()
 main = run
 
 data ParseException
-  = ParseException String
+  = ParseException SyntaxError
   | ExternalTypeError TypeError
   | IntermediateTypeError I.TypeError -- This kind of errors indicates bugs of this compiler.
   | TranslateError Asm.TranslateError
 
 instance Show ParseException where
-  show (ParseException s)        = s
+  show (ParseException e)        = "syntax error: " ++ show e
   show (ExternalTypeError e)     = "type error: " ++ display e
   show (IntermediateTypeError e) = "[bug] internal type error: " ++ show e
   show (TranslateError e)        = "translate error: " ++ show e

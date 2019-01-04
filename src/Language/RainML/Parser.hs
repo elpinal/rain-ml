@@ -1,5 +1,6 @@
 module Language.RainML.Parser
   ( parseString
+  , SyntaxError
   ) where
 
 import Data.Bifunctor
@@ -13,8 +14,13 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import qualified Language.RainML.Syntax as S
 
-parseString :: FilePath -> String -> Either String (S.Positional S.Term)
-parseString fp xs = bimap errorBundlePretty id $ parse whileParser fp xs
+newtype SyntaxError = SyntaxError (ParseErrorBundle String Void)
+
+instance Show SyntaxError where
+  show (SyntaxError eb) = errorBundlePretty eb
+
+parseString :: FilePath -> String -> Either SyntaxError (S.Positional S.Term)
+parseString fp xs = first SyntaxError $ parse whileParser fp xs
 
 type Parser = Parsec Void String
 
