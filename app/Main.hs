@@ -6,7 +6,7 @@ import qualified Data.ByteString.Lazy as B
 
 import Options.Applicative
 
-import Language.RainML.Asm as Asm
+import qualified Language.RainML.Asm as Asm
 import Language.RainML.CodeGen
 import qualified Language.RainML.Intermediate as I
 import Language.RainML.Parser

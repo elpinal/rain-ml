@@ -13,6 +13,9 @@ module Language.RainML.Asm
   , Reg(..)
 
   , typecheck
+  , Type(..)
+  , Context(..)
+  , TypeError(..)
 
   , makeGraph
   , Graph
