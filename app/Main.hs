@@ -21,12 +21,14 @@ data CompileException
   | ExternalTypeError TypeError
   | IntermediateTypeError I.TypeError -- This kind of errors indicates bugs of this compiler.
   | TranslateError Asm.TranslateError
+  | AssemblyTypeError Asm.TypeError -- This kind of errors indicates bugs of this compiler.
 
 instance Show CompileException where
   show (SyntaxError e)           = "syntax error: " ++ show e
   show (ExternalTypeError e)     = "type error: " ++ display e
   show (IntermediateTypeError e) = "[bug] internal type error: " ++ show e
   show (TranslateError e)        = "translate error: " ++ show e
+  show (AssemblyTypeError e)     = "[bug] assembly type error: " ++ show e
 
 instance Exception CompileException
 
@@ -68,7 +70,10 @@ compile fp content = do
   let inter = I.translate $ fromPositional tm
   orThrow IntermediateTypeError $ I.typecheck inter
 
-  fmap codeGen $ orThrow TranslateError $ Asm.toAsm inter
+  asm <- orThrow TranslateError $ Asm.toAsm inter
+  orThrow AssemblyTypeError $ Asm.typecheckWhole asm
+
+  return $ codeGen asm
 
 programName :: String
 programName = "rain-ml"

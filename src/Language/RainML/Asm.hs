@@ -12,6 +12,7 @@ module Language.RainML.Asm
   , Block(..)
   , Reg(..)
 
+  , typecheckWhole
   , typecheck
   , Type(..)
   , Context(..)
@@ -26,6 +27,7 @@ module Language.RainML.Asm
 
 import Data.Extensible
 
+import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
@@ -126,6 +128,9 @@ instance Typed Block where
 
 typecheck :: Context -> Block -> Either TypeError Context
 typecheck ctx block = leaveEff $ runEitherEff @ "err" $ execStateEff @ "ctx" (typeOf block) ctx
+
+typecheckWhole :: Block -> Either TypeError ()
+typecheckWhole = void . typecheck (Context mempty)
 
 type LiveVars = Set.Set Int
 type Graph = Map.Map Int (Set.Set Int)
