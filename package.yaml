@@ -21,6 +21,7 @@ description:         Please see the README on GitHub at <https://github.com/elpi
 
 dependencies:
 - base >= 4.7 && < 5
+- algebraic-graphs >= 0.3
 - bytestring >= 0.10.8.2
 - containers >= 0.6.0.1
 - extensible >= 0.5

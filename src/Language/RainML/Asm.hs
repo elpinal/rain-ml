@@ -19,13 +19,16 @@ module Language.RainML.Asm
   , TypeError(..)
 
   , makeGraph
-  , Graph
+  , IGraph
 
   , toAsm
   , TranslateError
   ) where
 
 import Data.Extensible
+
+import Algebra.Graph.Class
+import Algebra.Graph.Relation.Symmetric
 
 import Control.Monad
 import Control.Monad.Trans.Class
@@ -133,7 +136,9 @@ typecheckWhole :: Block -> Either TypeError ()
 typecheckWhole = void . typecheck (Context mempty)
 
 type LiveVars = Set.Set Int
-type Graph = Map.Map Int (Set.Set Int)
+
+-- | Represents an interference graph.
+type IGraph = SymmetricRelation Int
 
 type Counter = State Int
 
@@ -144,33 +149,26 @@ liveVars :: I.Value -> LiveVars
 liveVars (I.Var n) = Set.singleton n
 liveVars _         = mempty
 
-interfere :: Graph -> Int -> LiveVars -> Graph
+interfere :: IGraph -> Int -> LiveVars -> IGraph
 interfere graph n ls
   | Set.null ls = graph
-  | otherwise   = g $ Map.alter f n graph
-  where
-    f :: Maybe (Set.Set Int) -> Maybe (Set.Set Int)
-    f Nothing   = return ls
-    f (Just ks) = return $ ls <> ks
+  | otherwise   = graph + vertex n * vertices (Set.toList ls)
 
-    g :: Graph -> Graph
-    g graph1 = Map.unionWith (<>) (Map.fromSet (const $ Set.singleton n) ls) graph1
-
-makeGraph :: I.Term -> Graph
+makeGraph :: I.Term -> IGraph
 makeGraph t = evalState (evalStateT (buildGraph t) mempty) 0
 
-buildGraph :: I.Term -> StateT LiveVars Counter Graph
+buildGraph :: I.Term -> StateT LiveVars Counter IGraph
 buildGraph (I.Value v) = do
   modify $ (<>) $ liveVars v
-  return mempty -- Assumes values does not include two or more variables.
+  return empty -- Assumes values does not include two or more variables.
 buildGraph (I.Let d t) = do
   graph <- buildGraph t
   buildGraphDecl graph d
 
-buildGraphDecl :: Graph -> I.Decl -> StateT LiveVars Counter Graph
+buildGraphDecl :: IGraph -> I.Decl -> StateT LiveVars Counter IGraph
 buildGraphDecl graph d = inc >> buildGraphDecl_ graph d
 
-buildGraphDecl_ :: Graph -> I.Decl -> StateT LiveVars Counter Graph
+buildGraphDecl_ :: IGraph -> I.Decl -> StateT LiveVars Counter IGraph
 buildGraphDecl_ graph (I.Id v) = do
   i <- lift get
   ls <- gets $ Set.delete $ i - 1
@@ -194,22 +192,19 @@ instance Ord Weight where
 incWeight :: Weight -> Weight
 incWeight (Weight n) = Weight $ n + 1
 
-neighbors :: Int -> Graph -> Set.Set Int
-neighbors n graph = Map.findWithDefault mempty n graph
-
 -- Maximum cardinality search.
-mcs :: Heap (Heap.Entry Weight Int) -> Graph -> [Int]
-mcs (Heap.viewMin -> Just (Heap.payload -> n, heap)) graph = n : mcs (Heap.map f heap) (Map.delete n graph)
+mcs :: Heap (Heap.Entry Weight Int) -> IGraph -> [Int]
+mcs (Heap.viewMin -> Just (Heap.payload -> n, heap)) graph = n : mcs (Heap.map f heap) graph
   where
     f e@(Heap.Entry w m)
-      | m `Set.member` (Map.keysSet graph `Set.intersection` neighbors n graph) = Heap.Entry (incWeight w) m
+      | m `Set.member` neighbours n graph = Heap.Entry (incWeight w) m
       | otherwise = e
 mcs _ _ = []
 
 newtype Color = Color { getColor :: Int }
   deriving (Eq, Show)
 
-color :: [Int] -> Graph -> Map.Map Int Color
+color :: [Int] -> IGraph -> Map.Map Int Color
 color ns graph = foldl (\m n -> Map.insert n (colorEach n graph m) m) mempty ns
 
 minfree :: [Color] -> Color
@@ -225,8 +220,8 @@ minfrom a (n, xs)
       b = a + 1 + n `div` 2
       m = length us
 
-colorEach :: Int -> Graph -> Map.Map Int Color -> Color
-colorEach n graph m = minfree $ Map.elems $ Map.restrictKeys m $ neighbors n graph
+colorEach :: Int -> IGraph -> Map.Map Int Color -> Color
+colorEach n graph m = minfree $ Map.elems $ Map.restrictKeys m $ neighbours n graph
 
 regalloc :: I.Term -> Map.Map Int Color
 regalloc t = color ns graph

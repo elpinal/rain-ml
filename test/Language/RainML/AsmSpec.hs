@@ -2,8 +2,9 @@ module Language.RainML.AsmSpec where
 
 import Test.Hspec
 
+import Algebra.Graph.Class
+
 import qualified Data.Map.Lazy as Map
-import qualified Data.Set as Set
 import Data.Word
 
 import Language.RainML.Asm hiding (Add, Value)
@@ -26,16 +27,15 @@ spec :: Spec
 spec = do
   describe "makeGraph" $
     it "makes an interference graph from an intermediate term" $ do
-      makeGraph (Value $ n5)                                                            `shouldBe` mempty
-      makeGraph (Value $ Var 0)                                                         `shouldBe` mempty
-      makeGraph (Let (Id n5) $ Value $ Var 0)                                           `shouldBe` mempty
-      makeGraph (Let (Id n5) $ Let (Id n5) $ Value $ Var 0)                             `shouldBe` mempty
-      makeGraph (Let (Id n5) $ Let (Id n5) $ Value $ Var 1)                             `shouldBe` Map.fromList [(0, Set.singleton 1), (1, Set.singleton 0)]
-      makeGraph (Let (Id n5) $ Let (Id n5) $ Let (Arith Add 0 n5) $ Value $ Var 0)      `shouldBe` mempty
-      makeGraph (Let (Id n5) $ Let (Id n5) $ Let (Arith Add 0 (Var 1)) $ Value $ Var 0) `shouldBe` Map.fromList [(1, Set.singleton 2), (2, Set.singleton 1)]
+      makeGraph (Value $ n5)                                                            `shouldBe` empty
+      makeGraph (Value $ Var 0)                                                         `shouldBe` empty
+      makeGraph (Let (Id n5) $ Value $ Var 0)                                           `shouldBe` empty
+      makeGraph (Let (Id n5) $ Let (Id n5) $ Value $ Var 0)                             `shouldBe` empty
+      makeGraph (Let (Id n5) $ Let (Id n5) $ Value $ Var 1)                             `shouldBe` 0 * 1
+      makeGraph (Let (Id n5) $ Let (Id n5) $ Let (Arith Add 0 n5) $ Value $ Var 0)      `shouldBe` empty
+      makeGraph (Let (Id n5) $ Let (Id n5) $ Let (Arith Add 0 (Var 1)) $ Value $ Var 0) `shouldBe` 1 * 2
 
-      makeGraph (Let (Id n5) $ Let (Id n5) $ Let (Arith Add 0 (Var 1)) $ Let (Arith Add 0 (Var 2)) $ Value $ Var 0)
-        `shouldBe` Map.fromList [(1, Set.singleton 3), (2, Set.singleton 3), (3, Set.fromList [1, 2])]
+      makeGraph (Let (Id n5) $ Let (Id n5) $ Let (Arith Add 0 (Var 1)) $ Let (Arith Add 0 (Var 2)) $ Value $ Var 0) `shouldBe` (1 + 2) * 3
 
   describe "typecheck" $
     it "typechecks a program" $ do
