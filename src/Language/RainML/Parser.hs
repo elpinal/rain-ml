@@ -1,9 +1,12 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Language.RainML.Parser
-  ( parseString
+  ( parseText
   , SyntaxError
   ) where
 
 import Data.Bifunctor
+import qualified Data.Text as T
 import Data.Void
 
 import Control.Monad.Combinators.Expr
@@ -14,15 +17,15 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import qualified Language.RainML.Syntax as S
 
-newtype SyntaxError = SyntaxError (ParseErrorBundle String Void)
+newtype SyntaxError = SyntaxError (ParseErrorBundle T.Text Void)
 
 instance Show SyntaxError where
   show (SyntaxError eb) = errorBundlePretty eb
 
-parseString :: FilePath -> String -> Either SyntaxError (S.Positional S.Term)
-parseString fp xs = first SyntaxError $ parse whileParser fp xs
+parseText :: FilePath -> T.Text -> Either SyntaxError (S.Positional S.Term)
+parseText fp xs = first SyntaxError $ parse whileParser fp xs
 
-type Parser = Parsec Void String
+type Parser = Parsec Void T.Text
 
 type Position = S.Position
 
@@ -40,7 +43,7 @@ lexeme p = L.lexeme sc $ do
   end <- getSourcePos
   return $ S.Positional (S.Position start end) x
 
-symbol :: String -> Parser (S.Positional String)
+symbol :: T.Text -> Parser (S.Positional T.Text)
 symbol = lexeme . C.string
 
 parens :: Parser a -> Parser a
@@ -70,19 +73,19 @@ arithOperators = [[InfixL $ f S.Add <$ symbol "+"]]
       }
 
 -- Reserved words, that is, keywords.
-reserved :: String -> Parser Position
+reserved :: T.Text -> Parser Position
 reserved w = fmap S.getPosition $ lexeme $ try $ string w *> notFollowedBy alphaNumChar
 
-reservedWords :: [String]
+reservedWords :: [T.Text]
 reservedWords =
   [ "true"
   , "false"
   ]
 
-identifier :: Parser (S.Positional String)
+identifier :: Parser (S.Positional T.Text)
 identifier = lexeme $ try $ p >>= check
   where
-    p = (:) <$> letterChar <*> many alphaNumChar
+    p = fmap T.pack $ (:) <$> letterChar <*> many alphaNumChar
     check x =
       if x `elem` reservedWords
         then fail $ "keyword " ++ show x ++ " is not an identifier"

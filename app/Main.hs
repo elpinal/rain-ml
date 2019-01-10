@@ -3,6 +3,8 @@ module Main where
 import Control.Exception.Safe
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy as B
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 
 import Options.Applicative
 
@@ -60,11 +62,11 @@ orThrow ::  (MonadThrow m, Exception e) => (a1 -> e) -> Either a1 a2 -> m a2
 orThrow c = either (throwM . c) return
 
 compileFile :: (MonadIO m, MonadThrow m) => FilePath -> FilePath -> m ()
-compileFile fp outfp = liftIO (readFile fp) >>= compile fp >>= liftIO . B.writeFile outfp
+compileFile fp outfp = liftIO (TIO.readFile fp) >>= compile fp >>= liftIO . B.writeFile outfp
 
-compile :: MonadThrow m => FilePath -> String -> m B.ByteString
+compile :: MonadThrow m => FilePath -> T.Text -> m B.ByteString
 compile fp content = do
-  tm <- orThrow SyntaxError $ parseString fp content
+  tm <- orThrow SyntaxError $ parseText fp content
   orThrow ExternalTypeError $ typecheck tm
 
   let inter = I.translate $ fromPositional tm
