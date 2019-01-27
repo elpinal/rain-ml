@@ -42,6 +42,8 @@ import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
 import Data.Word
 
+import Data.OrderedMap (OrderedMap)
+
 import qualified Language.RainML.Intermediate as I
 
 newtype Reg = Reg Word8
@@ -62,6 +64,12 @@ data Inst
   deriving (Eq, Show)
 
 data Block = Block [Inst]
+  deriving (Eq, Show)
+
+newtype Label = Label String
+  deriving (Eq, Show)
+
+data Program = Program Block (OrderedMap Label (Type, Block))
   deriving (Eq, Show)
 
 data Type

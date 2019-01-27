@@ -7,6 +7,7 @@ module Data.OrderedMap
 import qualified Data.Map.Lazy as Map
 
 data OrderedMap k a = OrderedMap [k] (Map.Map k a)
+  deriving (Eq, Show)
 
 empty :: OrderedMap k a
 empty = OrderedMap [] Map.empty
