@@ -1,7 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -25,12 +23,13 @@ module Language.RainML.Asm
   , TranslateError
   ) where
 
-import Data.Extensible
-
 import Algebra.Graph.Class
 import Algebra.Graph.Relation.Symmetric
 
 import Control.Monad
+import Control.Monad.Freer
+import Control.Monad.Freer.Error
+import qualified Control.Monad.Freer.State as FState
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
@@ -80,26 +79,31 @@ data Type
 newtype Context = Context (Map.Map Reg Type)
   deriving (Eq, Show)
 
+mapContext :: (Map.Map Reg Type -> Map.Map Reg Type) -> Context -> Context
+mapContext = coerce
+
 data TypeError
   = UnboundRegister Reg
   | NotIntType Type
   deriving (Eq, Show)
 
+type Effs = '[FState.State Context, Error TypeError]
+
 class Typed a where
   type Output a
 
-  typeOf :: (Associate "ctx" (State Context) xs, Associate "err" (EitherEff TypeError) xs) => a -> Eff xs (Output a)
+  typeOf :: Members Effs xs => a -> Eff xs (Output a)
 
 instance Typed Value where
   type Output Value = Type
 
   typeOf (Imm _) = return IntType
 
-lookupReg :: (Associate "ctx" (State Context) xs, Associate "err" (EitherEff TypeError) xs) => Reg -> Eff xs Type
+lookupReg :: Members Effs xs => Reg -> Eff xs Type
 lookupReg r = do
-  ctx <- getEff #ctx
-  case Map.lookup r $ coerce ctx of
-    Nothing -> throwEff #err $ UnboundRegister r
+  Context ctx <- FState.get
+  case Map.lookup r ctx of
+    Nothing -> throwError $ UnboundRegister r
     Just ty -> return ty
 
 instance Typed Reg where
@@ -113,15 +117,15 @@ instance Typed Operand where
   typeOf (Register r) = typeOf r
   typeOf (Value v)    = typeOf v
 
-updateReg :: Associate "ctx" (State Context) xs => Reg -> Type -> Eff xs ()
-updateReg r ty = modifyEff #ctx $ coerce $ Map.insert r ty
+updateReg :: Member (FState.State Context) xs => Reg -> Type -> Eff xs ()
+updateReg r ty = FState.modify $ mapContext $ Map.insert r ty
 
-expect :: (Typed a, Associate "ctx" (State Context) xs, Associate "err" (EitherEff TypeError) xs) => a -> (Output a -> Eff xs ()) -> Eff xs ()
+expect :: (Typed a, Members Effs xs) => a -> (Output a -> Eff xs ()) -> Eff xs ()
 expect x f = typeOf x >>= f
 
-int :: Associate "err" (EitherEff TypeError) xs => Type -> Eff xs ()
+int :: Member (Error TypeError) xs => Type -> Eff xs ()
 int IntType = return ()
-int ty      = throwEff #err $ NotIntType ty
+int ty      = throwError $ NotIntType ty
 
 instance Typed Inst where
   type Output Inst = ()
@@ -138,7 +142,7 @@ instance Typed Block where
   typeOf (Block is) = mapM_ typeOf is
 
 typecheck :: Context -> Block -> Either TypeError Context
-typecheck ctx block = leaveEff $ runEitherEff @ "err" $ execStateEff @ "ctx" (typeOf block) ctx
+typecheck ctx block = run $ runError $ FState.execState ctx $ typeOf block
 
 typecheckWhole :: Block -> Either TypeError ()
 typecheckWhole = void . typecheck (Context mempty)
