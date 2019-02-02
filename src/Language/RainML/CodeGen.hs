@@ -10,6 +10,8 @@ import Data.ByteString.Builder
 import Data.Coerce
 import Data.Word
 
+import qualified Data.OrderedMap as OMap
+
 import qualified Language.RainML.Asm as Asm
 import Language.RainML.Version
 
@@ -31,9 +33,10 @@ immBits :: Word8
 immBits = 0b100
 
 codeGen :: Asm.Program -> B.ByteString
-codeGen (Asm.Program entry _) = toLazyByteString $ mconcat
+codeGen (Asm.Program entry m) = toLazyByteString $ mconcat
   [ word8 rainvmVersion
   , block entry
+  , foldMap block $ OMap.toUnorderedMap $ snd <$> m
   ]
 
 instruction :: Asm.Inst -> Builder
