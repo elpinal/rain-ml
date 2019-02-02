@@ -73,9 +73,9 @@ compile fp content = do
   orThrow IntermediateTypeError $ I.typecheck inter
 
   asm <- orThrow TranslateError $ Asm.toAsm inter
-  orThrow AssemblyTypeError $ Asm.typecheckWhole asm
+  orThrow AssemblyTypeError $ Asm.typecheck asm
 
-  return $ codeGen asm
+  return $ codeGen $ Asm.toBlock asm
 
 programName :: String
 programName = "rain-ml"

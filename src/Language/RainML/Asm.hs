@@ -10,7 +10,10 @@ module Language.RainML.Asm
   , Block(..)
   , Reg(..)
 
+  , toBlock
+
   , typecheckWhole
+  , typecheckBlock
   , typecheck
   , Type(..)
   , Context(..)
@@ -73,6 +76,12 @@ newtype Label = Label String
 
 data Program = Program Block (OrderedMap Label (Type, Block))
   deriving (Eq, Show)
+
+fromBlock :: Block -> Program
+fromBlock entry = Program entry OMap.empty
+
+toBlock :: Program -> Block
+toBlock (Program entry _) = entry
 
 data Type
   = IntType
@@ -178,11 +187,14 @@ instance Typed Program where
           ctx <- fromContext ty
           FState.evalState ctx $ typeOf block
 
-typecheck :: Context -> Block -> Either TypeError Context
-typecheck ctx block = run $ runError $ FState.execState ctx $ runReader emptyHeapContext $ typeOf block
+typecheckBlock :: Context -> Block -> Either TypeError Context
+typecheckBlock ctx block = run $ runError $ FState.execState ctx $ runReader emptyHeapContext $ typeOf block
 
 typecheckWhole :: Block -> Either TypeError ()
-typecheckWhole = void . typecheck (Context mempty)
+typecheckWhole = void . typecheckBlock (Context mempty)
+
+typecheck :: Program -> Either TypeError ()
+typecheck prog = run $ runError $ runReader (fromProgram prog) $ typeOf prog
 
 fromProgram :: Program -> HeapContext
 fromProgram (Program _ m) = HeapContext $ OMap.toUnorderedMap $ fst <$> m
@@ -281,8 +293,8 @@ regalloc t = color ns graph
     (graph, n) = runState (evalStateT (buildGraph t) mempty) 0
     ns = mcs (Heap.fromList $ map (Heap.Entry $ Weight 0) [0 .. n - 1]) graph
 
-toAsm :: I.Term -> Either TranslateError Block
-toAsm t = runExcept $ evalStateT (evalStateT (fromTerm t) $ regalloc t) 0
+toAsm :: I.Term -> Either TranslateError Program
+toAsm t = fmap fromBlock $ runExcept $ evalStateT (evalStateT (fromTerm t) $ regalloc t) 0
 
 type Coloring = Map.Map Int Color
 type Translator = StateT Coloring (StateT Int (Except TranslateError))
