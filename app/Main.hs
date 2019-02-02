@@ -75,7 +75,7 @@ compile fp content = do
   asm <- orThrow TranslateError $ Asm.toAsm inter
   orThrow AssemblyTypeError $ Asm.typecheck asm
 
-  return $ codeGen $ Asm.toBlock asm
+  return $ codeGen asm
 
 programName :: String
 programName = "rain-ml"

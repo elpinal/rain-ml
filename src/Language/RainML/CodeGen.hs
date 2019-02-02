@@ -30,10 +30,10 @@ instWithoutInfo i = inst i 0
 immBits :: Word8
 immBits = 0b100
 
-codeGen :: Asm.Block -> B.ByteString
-codeGen b = toLazyByteString $ mconcat
+codeGen :: Asm.Program -> B.ByteString
+codeGen (Asm.Program entry _) = toLazyByteString $ mconcat
   [ word8 rainvmVersion
-  , block b
+  , block entry
   ]
 
 instruction :: Asm.Inst -> Builder

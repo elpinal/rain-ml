@@ -8,9 +8,8 @@ module Language.RainML.Asm
   , Operand(..)
   , Inst(..)
   , Block(..)
+  , Program(..)
   , Reg(..)
-
-  , toBlock
 
   , typecheckWhole
   , typecheckBlock
@@ -79,9 +78,6 @@ data Program = Program Block (OrderedMap Label (Type, Block))
 
 fromBlock :: Block -> Program
 fromBlock entry = Program entry OMap.empty
-
-toBlock :: Program -> Block
-toBlock (Program entry _) = entry
 
 data Type
   = IntType
