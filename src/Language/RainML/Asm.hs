@@ -29,6 +29,7 @@ import Algebra.Graph.Relation.Symmetric
 import Control.Monad
 import Control.Monad.Freer
 import Control.Monad.Freer.Error
+import Control.Monad.Freer.Reader
 import qualified Control.Monad.Freer.State as FState
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
@@ -86,24 +87,31 @@ mapContext = coerce
 newtype HeapContext = HeapContext (Map.Map Label Type)
   deriving (Eq, Show)
 
+emptyHeapContext :: HeapContext
+emptyHeapContext = HeapContext Map.empty
+
 data TypeError
   = UnboundRegister Reg
   | NotIntType Type
   deriving (Eq, Show)
 
-type Effs = '[FState.State Context, Error TypeError]
+type Effs = '[Reader HeapContext, Error TypeError]
 
 class Typed a where
   type Output a
 
-  typeOf :: Members Effs xs => a -> Eff xs (Output a)
+  -- | Additional effects.
+  type AEffs a :: [* -> *]
+
+  typeOf :: (Members (AEffs a) xs, Members Effs xs) => a -> Eff xs (Output a)
 
 instance Typed Value where
   type Output Value = Type
+  type AEffs Value = '[FState.State Context]
 
   typeOf (Imm _) = return IntType
 
-lookupReg :: Members Effs xs => Reg -> Eff xs Type
+lookupReg :: Members '[FState.State Context, Error TypeError] xs => Reg -> Eff xs Type
 lookupReg r = do
   Context ctx <- FState.get
   case Map.lookup r ctx of
@@ -112,11 +120,13 @@ lookupReg r = do
 
 instance Typed Reg where
   type Output Reg = Type
+  type AEffs Reg = '[FState.State Context]
 
   typeOf = lookupReg
 
 instance Typed Operand where
   type Output Operand = Type
+  type AEffs Operand = '[FState.State Context]
 
   typeOf (Register r) = typeOf r
   typeOf (Value v)    = typeOf v
@@ -124,7 +134,7 @@ instance Typed Operand where
 updateReg :: Member (FState.State Context) xs => Reg -> Type -> Eff xs ()
 updateReg r ty = FState.modify $ mapContext $ Map.insert r ty
 
-expect :: (Typed a, Members Effs xs) => a -> (Output a -> Eff xs ()) -> Eff xs ()
+expect :: (Typed a, Members (AEffs a) xs, Members Effs xs) => a -> (Output a -> Eff xs ()) -> Eff xs ()
 expect x f = typeOf x >>= f
 
 int :: Member (Error TypeError) xs => Type -> Eff xs ()
@@ -133,6 +143,7 @@ int ty      = throwError $ NotIntType ty
 
 instance Typed Inst where
   type Output Inst = ()
+  type AEffs Inst = '[FState.State Context]
 
   typeOf (Mov r op)      = typeOf op >>= updateReg r
   typeOf (Add r op1 op2) = do
@@ -142,11 +153,12 @@ instance Typed Inst where
 
 instance Typed Block where
   type Output Block = ()
+  type AEffs Block = '[FState.State Context]
 
   typeOf (Block is) = mapM_ typeOf is
 
 typecheck :: Context -> Block -> Either TypeError Context
-typecheck ctx block = run $ runError $ FState.execState ctx $ typeOf block
+typecheck ctx block = run $ runError $ FState.execState ctx $ runReader emptyHeapContext $ typeOf block
 
 typecheckWhole :: Block -> Either TypeError ()
 typecheckWhole = void . typecheck (Context mempty)
