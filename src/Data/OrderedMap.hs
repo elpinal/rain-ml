@@ -4,11 +4,13 @@ module Data.OrderedMap
   ( OrderedMap
   , empty
   , insert
+  , fromList
 
   -- * Conversion
   , toUnorderedMap
   ) where
 
+import Data.Foldable
 import qualified Data.Map.Lazy as Map
 
 data OrderedMap k a = OrderedMap [k] (Map.Map k a)
@@ -21,6 +23,9 @@ insert :: Ord k => k -> a -> OrderedMap k a -> Maybe (OrderedMap k a)
 insert k v (OrderedMap ks m)
   | Map.member k m = Nothing
   | otherwise      = Just $ OrderedMap (k : ks) $ Map.insert k v m
+
+fromList :: Ord k => [(k, a)] -> Maybe (OrderedMap k a)
+fromList xs = foldlM (\m (k, v) -> insert k v m) empty xs
 
 toUnorderedMap :: OrderedMap k a -> Map.Map k a
 toUnorderedMap (OrderedMap _ m) = m
