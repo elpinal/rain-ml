@@ -35,6 +35,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
 import Data.Coerce
+import Data.Foldable
 import Data.Heap (Heap)
 import qualified Data.Heap as Heap
 import Data.List
@@ -81,6 +82,9 @@ data Type
 newtype Context = Context (Map.Map Reg Type)
   deriving (Eq, Show)
 
+emptyContext :: Context
+emptyContext = Context Map.empty
+
 mapContext :: (Map.Map Reg Type -> Map.Map Reg Type) -> Context -> Context
 mapContext = coerce
 
@@ -93,6 +97,7 @@ emptyHeapContext = HeapContext Map.empty
 data TypeError
   = UnboundRegister Reg
   | NotIntType Type
+  | NotContext Type
   deriving (Eq, Show)
 
 type Effs = '[Reader HeapContext, Error TypeError]
@@ -156,6 +161,22 @@ instance Typed Block where
   type AEffs Block = '[FState.State Context]
 
   typeOf (Block is) = mapM_ typeOf is
+
+fromContext :: Member (Error TypeError) xs => Type -> Eff xs Context
+fromContext (Code ctx) = return ctx
+fromContext ty         = throwError $ NotContext ty
+
+instance Typed Program where
+  type Output Program = ()
+  type AEffs Program = '[]
+
+  typeOf (Program entry m) = do
+    FState.evalState emptyContext $ typeOf entry
+    traverse_ f $ OMap.toUnorderedMap m
+      where
+        f (ty, block) = do
+          ctx <- fromContext ty
+          FState.evalState ctx $ typeOf block
 
 typecheck :: Context -> Block -> Either TypeError Context
 typecheck ctx block = run $ runError $ FState.execState ctx $ runReader emptyHeapContext $ typeOf block
