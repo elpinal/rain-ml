@@ -42,6 +42,7 @@ import qualified Data.Set as Set
 import Data.Word
 
 import Data.OrderedMap (OrderedMap)
+import qualified Data.OrderedMap as OMap
 
 import qualified Language.RainML.Intermediate as I
 
@@ -81,6 +82,9 @@ newtype Context = Context (Map.Map Reg Type)
 
 mapContext :: (Map.Map Reg Type -> Map.Map Reg Type) -> Context -> Context
 mapContext = coerce
+
+newtype HeapContext = HeapContext (Map.Map Label Type)
+  deriving (Eq, Show)
 
 data TypeError
   = UnboundRegister Reg
@@ -146,6 +150,9 @@ typecheck ctx block = run $ runError $ FState.execState ctx $ typeOf block
 
 typecheckWhole :: Block -> Either TypeError ()
 typecheckWhole = void . typecheck (Context mempty)
+
+fromProgram :: Program -> HeapContext
+fromProgram (Program _ m) = HeapContext $ OMap.toUnorderedMap $ fst <$> m
 
 type LiveVars = Set.Set Int
 
