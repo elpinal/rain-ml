@@ -24,3 +24,9 @@ insert k v (OrderedMap ks m)
 
 toUnorderedMap :: OrderedMap k a -> Map.Map k a
 toUnorderedMap (OrderedMap _ m) = m
+
+instance Ord k => Foldable (OrderedMap k) where
+  foldr f e (OrderedMap ks m) = g ks e
+    where
+      g []       x = x
+      g (l : ls) x = g ls $ f (Map.findWithDefault (error "foldr: unexpected error") l m) x
