@@ -10,6 +10,7 @@ module Language.RainML.Asm
   , Block(..)
   , Program(..)
   , Reg(..)
+  , Label(..)
 
   , typecheckWhole
   , typecheckBlock
@@ -71,7 +72,7 @@ data Block = Block [Inst]
   deriving (Eq, Show)
 
 newtype Label = Label String
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 data Program = Program Block (OrderedMap Label (Type, Block))
   deriving (Eq, Show)
